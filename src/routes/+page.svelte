@@ -1,2 +1,6 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<style>
+    @import url("$lib/global.css");
+</style>
+
+<h1>Bike Watching</h1>
+<p>Make a map that visualizes the number of arrivals and departures for blue bike</p>
