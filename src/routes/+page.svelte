@@ -1,24 +1,56 @@
 <script>
     import mapboxgl from "mapbox-gl";
     import "../../node_modules/mapbox-gl/dist/mapbox-gl.css" 
-    import { createEventDispatcher, onMount } from "svelte";
+    import { onMount } from "svelte";
     import * as d3 from 'd3';
 
     let bike_styling = {line_width: 2, line_color: "green", line_opacity: 0.4}
-    let bike_stations = [];
+    let stations = [];
+    let trips = [];
+    let radiusScale;
+    let departures;
+    let arrivals;
+    let timeFilter = -1;
+    // let timeFilterLabel;
     let map;
-
+    let mapViewChanged = 0;
+    
     mapboxgl.accessToken = "pk.eyJ1Ijoib2xpdmlhOTg3IiwiYSI6ImNsdXVzZ3R6bTBkY2wyaW5reG0zYXp2ZmQifQ.7knWre2RB222IHPl2qrgjg";
 
+    $: map?.on("move", evt => mapViewChanged++);
+    $: radiusScale = d3.scaleSqrt().domain([0, d3.max(stations, d => d.totalTraffic) ]).range([0, 25]);
+    $: timeFilterLabel = new Date(0, 0, 0, 0, timeFilter).toLocaleString("en", {timeStyle: "short"});
+
     onMount( async() => {
-        bike_stations = await d3.csv("bluebikes-stations.csv", row=>({
+        trips = await d3.csv("bluebikes-traffic-2024-03.csv", row => ({
+            ...row,
+            is_member: Number(row.is_member),
+            
+        }));
+        // new Date(row.date + "T00:00" + row.timezone)
+
+        stations = await d3.csv("bluebikes-stations.csv", row=>({
                 ...row,
                 Lat: Number(row.Lat),
                 Long: Number(row.Long),
                 total_docks: Number(row.Total_Docks),
             })
         );
-        
+
+        departures = d3.rollup(trips, v => v.length, d => d.start_station_id);
+        arrivals = d3.rollup(trips, v => v.length, d => d.end_station_id);
+
+        stations = stations.map(station => {
+            let id = station.Number;
+            station.arrivals = arrivals.get(id) ?? 0;
+            station.departures = departures.get(id) ?? 0;
+            station.totalTraffic = station.arrivals + station.departures;
+
+            return station;
+        });
+
+        // console.log(stations);
+
         map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/olivia987/cluuu60oe00q101qs4jrxedq9',
@@ -83,17 +115,78 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+
+        circle{
+            fill-opacity: 60%;
+            stroke: white;
+            pointer-events: auto;
+        }
+    }
+
+    header{
+        display: flex;
+        gap: 1em;
+        align-items: baseline;
+        margin-bottom: 0px;
+        /* margin-left: auto; */
+
+        h1{
+            margin-right: auto;
+        }
+    
+    }
+
+    .slider{
+        display: grid;
+        grid-template-rows: 5fr 5fr;
+        margin-left: auto;
+        margin-top: 1px;
+        margin-bottom: 15px;
+        /* margin-right: auto; */
+    }
+
+    em{
+        font-style: italic;
+        color:lightslategrey;
+        margin-right:0px;
+    }
+    
+    time{
+        transition: 500ms;
     }
 
 </style>
 
-<h1>Bike Watching</h1>
+<header>
+    <h1> 🚴🏼‍♀️ Bike Watching</h1>
+    <div class="slider">
+        <label>
+            <strong> Filter by time: </strong> 
+            <input type="range" min= -1 max= 1440 bind:value={timeFilter}> 
+        </label>
+    
+        {#if timeFilter === -1}
+            <em>(any time)</em>
+        {/if}
+        
+        {#if timeFilter !== -1 }
+            <time>{timeFilterLabel}</time>
+        {/if}
+    </div>
+    
+</header>
+
 <div id='map'>
     <svg>
-        {#each bike_stations as station}
-            <circle 
-                { ...getCoords(station) } r="5" fill="steelblue"
-            />
-        {/each}
+        {#key mapViewChanged}
+            {#each stations as station}
+                <circle 
+                    { ...getCoords(station) } r={radiusScale(station.totalTraffic)} fill="steelblue"
+                >
+                    <title class="tooltip">{station.totalTraffic} trips ({station.arrivals} arrivals, {station.departures} departures)</title>
+                </circle>
+                
+            {/each}
+        {/key}
     </svg>
 </div>
