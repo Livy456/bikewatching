@@ -204,14 +204,34 @@
             var(--color-arrivals)
         );
         border: 10px solid var(--color);
-        /* background-color: var(--color); */
+        background-color: var(--color);
         display: grid;
         grid-template-columns: 10fr 10fr 10fr;
         margin-block: 10px;
+        margin: 10px;
 
         .balance{
-            background-color: var(--color);
+            background-color: rgb(196, 116, 196);
             column-gap:10px;
+            color: white;
+            font-style: bold;
+            text-align: center;
+            
+        }
+        .arrive{
+            background-color: darkorange;
+            column-gap: 10px;
+            color:white;
+            font-style: bold;
+            text-align: center;
+            margin-left: 5px;
+        }
+        .depart{
+            background-color: steelblue;
+            margin-right: 5px;
+            font-style: bold;
+            text-align: center;
+            color: white;
         }
     }
 
@@ -253,7 +273,7 @@
     </svg>
 </div>
 <div class="legend">
-    <div class="depart" style="--departure-ratio: 1">More Departures</div>
-    <div class="balance" style="--departure-ratio: 0.5">Balanced</div>
-    <div class="arrive" style="--departure-ratio: 0">More Arrivals</div>
+    <div class="depart" style="--departure-ratio: {1}">More Departures</div>
+    <div class="balance" style="--departure-ratio: {0.5}">Balanced</div>
+    <div class="arrive" style="--departure-ratio: {0}">More Arrivals</div>
 </div>
