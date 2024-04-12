@@ -42,7 +42,6 @@
 
             return station;
     });
-    $: console.log(filteredStations);
 
     onMount( async() => {
         trips = await d3.csv("bluebikes-traffic-2024-03.csv").then(trips => {
@@ -196,6 +195,26 @@
         transition: 500ms;
     }
 
+    .legend{
+        --color-departures: steelblue;
+        --color-arrivals: darkorange;
+        --color: color-mix(
+            in oklch,
+            var(--color-departures) calc(100% * var(--departure-ratio)),
+            var(--color-arrivals)
+        );
+        border: 10px solid var(--color);
+        /* background-color: var(--color); */
+        display: grid;
+        grid-template-columns: 10fr 10fr 10fr;
+        margin-block: 10px;
+
+        .balance{
+            background-color: var(--color);
+            column-gap:10px;
+        }
+    }
+
 </style>
 
 <header>
@@ -232,4 +251,9 @@
             {/each}
         {/key}
     </svg>
+</div>
+<div class="legend">
+    <div class="depart" style="--departure-ratio: 1">More Departures</div>
+    <div class="balance" style="--departure-ratio: 0.5">Balanced</div>
+    <div class="arrive" style="--departure-ratio: 0">More Arrivals</div>
 </div>
