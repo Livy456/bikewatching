@@ -43,16 +43,6 @@
             return station;
     });
     $: console.log(filteredStations);
-    // $: 
-
-    //     stations = stations.map(station => {
-    //         let id = station.Number;
-    //         station.arrivals = arrivals.get(id) ?? 0;
-    //         station.departures = departures.get(id) ?? 0;
-    //         station.totalTraffic = station.arrivals + station.departures;
-
-    //         return station;
-    //     });
 
     onMount( async() => {
         trips = await d3.csv("bluebikes-traffic-2024-03.csv").then(trips => {
@@ -84,8 +74,6 @@
 
             return station;
         });
-
-        // console.log(stations);
 
         map = new mapboxgl.Map({
             container: 'map',
@@ -165,9 +153,10 @@
             --color-arrivals: darkorange;
             --color: color-mix(
                 in oklch,
-                var(--color-departures) calc(100% * var(--departure-ratio))
-            )
-
+                var(--color-departures) calc(100% * var(--departure-ratio)),
+                var(--color-arrivals)
+            );
+            fill: var(--color);
         }
     }
 
@@ -234,8 +223,8 @@
             {#each filteredStations as station}
                 
                 <circle 
-                    { ...getCoords(station) } r={radiusScale(station.totalTraffic)} fill="steelblue"
-                    style="--departure-ratio: { stationFlow(station.departures / station.totalTraffic) } "
+                    { ...getCoords(station) } r={ radiusScale(station.totalTraffic) } fill="steelblue"
+                    style="--departure-ratio: { stationFlow(station.departures / station.totalTraffic) }"
                 >
                     <title class="tooltip">{station.totalTraffic} trips ({station.arrivals} arrivals, {station.departures} departures)</title>
                 </circle>
