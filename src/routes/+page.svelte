@@ -8,26 +8,62 @@
     let stations = [];
     let trips = [];
     let radiusScale;
+    let stationFlow; 
     let departures;
     let arrivals;
     let timeFilter = -1;
-    // let timeFilterLabel;
+    let filteredTrips;
+    let filteredStations;
+    let filteredArrivals;
+    let filteredDepartures;
+    let timeFilterLabel;
     let map;
     let mapViewChanged = 0;
     
     mapboxgl.accessToken = "pk.eyJ1Ijoib2xpdmlhOTg3IiwiYSI6ImNsdXVzZ3R6bTBkY2wyaW5reG0zYXp2ZmQifQ.7knWre2RB222IHPl2qrgjg";
-
+    stationFlow = d3.scaleQuantize().domain( [0, 1] ).range( [0, 0.5, 1] );
     $: map?.on("move", evt => mapViewChanged++);
-    $: radiusScale = d3.scaleSqrt().domain([0, d3.max(stations, d => d.totalTraffic) ]).range([0, 25]);
+    $: radiusScale = d3.scaleSqrt().domain([0, d3.max(stations, d => d.totalTraffic) ]).range([0, 35]);
     $: timeFilterLabel = new Date(0, 0, 0, 0, timeFilter).toLocaleString("en", {timeStyle: "short"});
+    $: filteredTrips = timeFilter === -1? trips : trips.filter(trip => {
+        let startedMinutes = minutesSinceMidnight(trip.started_at);
+        let endedMinutes = minutesSinceMidnight(trip.ended_at);
+        return Math.abs(startedMinutes - timeFilter) <= 60
+                || Math.abs(endedMinutes - timeFilter) <= 60;
+    }); 
+    $: filteredArrivals = d3.rollup(filteredTrips, v => v.length, d => d.start_station_id);
+    $: filteredDepartures = d3.rollup(filteredTrips, v => v.length, d => d.end_station_id);
+    $: filteredStations = stations.map(station => {
+            station = {...station};
+            let id = station.Number;
+            station.arrivals = filteredArrivals.get(id) ?? 0;
+            station.departures = filteredDepartures.get(id) ?? 0;
+            station.totalTraffic = station.arrivals + station.departures;
+
+            return station;
+    });
+    $: console.log(filteredStations);
+    // $: 
+
+    //     stations = stations.map(station => {
+    //         let id = station.Number;
+    //         station.arrivals = arrivals.get(id) ?? 0;
+    //         station.departures = departures.get(id) ?? 0;
+    //         station.totalTraffic = station.arrivals + station.departures;
+
+    //         return station;
+    //     });
 
     onMount( async() => {
-        trips = await d3.csv("bluebikes-traffic-2024-03.csv", row => ({
-            ...row,
-            is_member: Number(row.is_member),
-            
-        }));
-        // new Date(row.date + "T00:00" + row.timezone)
+        trips = await d3.csv("bluebikes-traffic-2024-03.csv").then(trips => {
+            for (let trip of trips)
+            {
+                trip.started_at = new Date(trip.started_at);
+                trip.ended_at = new Date(trip.ended_at);
+            }
+
+            return trips;
+        });
 
         stations = await d3.csv("bluebikes-stations.csv", row=>({
                 ...row,
@@ -99,6 +135,11 @@
 
         return {cx: x, cy: y};
     }
+
+    function minutesSinceMidnight (date)
+    {   
+        return date.getHours() * 60 + date.getMinutes(); // converts time of day to minutes
+    }
 </script>
 
 <style>
@@ -120,6 +161,13 @@
             fill-opacity: 60%;
             stroke: white;
             pointer-events: auto;
+            --color-departures: steelblue;
+            --color-arrivals: darkorange;
+            --color: color-mix(
+                in oklch,
+                var(--color-departures) calc(100% * var(--departure-ratio))
+            )
+
         }
     }
 
@@ -132,6 +180,10 @@
 
         h1{
             margin-right: auto;
+        }
+
+        input{
+            width: 500px;
         }
     
     }
@@ -179,9 +231,11 @@
 <div id='map'>
     <svg>
         {#key mapViewChanged}
-            {#each stations as station}
+            {#each filteredStations as station}
+                
                 <circle 
                     { ...getCoords(station) } r={radiusScale(station.totalTraffic)} fill="steelblue"
+                    style="--departure-ratio: { stationFlow(station.departures / station.totalTraffic) } "
                 >
                     <title class="tooltip">{station.totalTraffic} trips ({station.arrivals} arrivals, {station.departures} departures)</title>
                 </circle>
